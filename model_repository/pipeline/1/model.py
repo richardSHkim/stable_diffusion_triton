@@ -5,7 +5,7 @@ import triton_python_backend_utils as pb_utils
 from diffusers import DPMSolverMultistepScheduler
 
 from .src.stable_diffusion_allinone_pipeline import StableDiffusionAllInOnePipeline
-from .src.utils import create_reco_prompt, DATA_NAME_LIST
+from .src.utils import create_reco_prompt, DATA_TO_CAPTION
 
 
 class TritonPythonModel:
@@ -31,6 +31,7 @@ class TritonPythonModel:
             "pytorch_lora_weights.safetensors",
         )
         self.cur_lora_name = data_name
+        print(f"Loaded {data_name} LoRA weights")
 
     def execute(self, requests):
         responses = []
@@ -60,7 +61,18 @@ class TritonPythonModel:
             width = 512
             height = 512
             generator=torch.Generator(device=self.device).manual_seed(seed) if seed >=0 else None
-    
+
+            # check mode
+            if mode not in ["Text-to-Image", "Image-to-Image", "Inpaint", "Outpaint", "Add"]:
+                continue
+
+            # check data_name
+            if data_name not in DATA_TO_CAPTION:
+                continue
+
+            # Get base prompt
+            prompt = [DATA_TO_CAPTION[data_name](None) + f" {x}" for x in prompt]
+
             # Get ReCo prompt
             reco_prompt = []
             for prompt_, phrases_, boxes_ in zip(prompt, phrases, boxes):
@@ -79,7 +91,7 @@ class TritonPythonModel:
                 self.update_lora(data_name)
 
             # inference
-            if mode == "t2i":
+            if mode == "Text-to-Image":
                 results = self.pipe(prompt,
                                     negative_prompt=negative_prompt,
                                     num_inference_steps=num_inference_steps,

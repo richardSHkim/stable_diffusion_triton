@@ -27,8 +27,6 @@ def send_request(
         seed: int = -1,
     ) -> List[Image.Image]:
 
-    assert mode in ["t2i", "i2i", "inpaint", "outpaint", "add"]
-
     # Make numpy
     data_name = np.array([data_name], dtype=object)[None, :]
     mode = np.array([mode], dtype=object)[None, :]
