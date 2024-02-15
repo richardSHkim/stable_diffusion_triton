@@ -133,6 +133,7 @@ def send_request(
 
 if __name__ == "__main__":
     kwargs = {
+        "url": "0.0.0.0:8000",
         "num_results": 4,
         "data_name": "roboflow-cable-damage",
         "mode": "Text-to-Image",
