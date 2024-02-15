@@ -25,21 +25,21 @@ def send_request(
     ) -> List[Image.Image]:
 
     # Make numpy
-    data_name = np.array([data_name], dtype=object)[None, :]
-    mode = np.array([mode], dtype=object)[None, :]
-    class_name_to_inpaint = np.array([class_name_to_inpaint], dtype=object)[None, :]
-    raw_image = np.array(raw_image, dtype=np.uint8)[None, :]
-    mask_image = np.array(mask_image, dtype=np.uint8)[None, :]
-    boxes = np.array(boxes, dtype=np.float32)[None, :]
-    phrases = np.array(phrases, dtype=object)[None, :]
-    prompt = np.array([prompt], dtype=object)[None, :]
-    negative_prompt = np.array([negative_prompt], dtype=object)[None, :]
-    num_inference_steps = np.array([num_inference_steps], dtype=np.int32)[None, :]
-    guidance_scale = np.array([guidance_scale], dtype=np.float32)[None, :]
-    strength = np.array([strength], dtype=np.float32)[None, :]
-    strength_2 = np.array([strength_2], dtype=np.float32)[None, :]
-    num_images_per_prompt = np.array([num_images_per_prompt], dtype=np.int32)[None, :]
-    seed = np.array([seed], dtype=np.int64)[None, :]
+    data_name = np.array([data_name], dtype=object)
+    mode = np.array([mode], dtype=object)
+    class_name_to_inpaint = np.array([class_name_to_inpaint], dtype=object)
+    raw_image = np.array(raw_image, dtype=np.uint8)
+    mask_image = np.array(mask_image, dtype=np.uint8)
+    boxes = np.array(boxes, dtype=np.float32)
+    phrases = np.array(phrases, dtype=object)
+    prompt = np.array([prompt], dtype=object)
+    negative_prompt = np.array([negative_prompt], dtype=object)
+    num_inference_steps = np.array([num_inference_steps], dtype=np.int32)
+    guidance_scale = np.array([guidance_scale], dtype=np.float32)
+    strength = np.array([strength], dtype=np.float32)
+    strength_2 = np.array([strength_2], dtype=np.float32)
+    num_images_per_prompt = np.array([num_images_per_prompt], dtype=np.int32)
+    seed = np.array([seed], dtype=np.int64)
 
     # Triton Inputs
     data_name_in = httpclient.InferInput(name="data_name", shape=data_name.shape, datatype="BYTES")
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     responses = send_request(
         client=client,
         data_name="roboflow-cable-damage",
-        mode="t2i",
+        mode="Text-to-Image",
         class_name_to_inpaint="break",
         raw_image=Image.fromarray(np.zeros([512, 512, 3]).astype(np.uint8)),
         mask_image=Image.fromarray(np.zeros([512, 512]).astype(np.uint8)),
