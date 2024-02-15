@@ -6,6 +6,29 @@ from multiprocessing import Process, Manager, Lock
 import tritonclient.http as httpclient
 
 
+def send_request_mp(
+        url: str,
+        num_results: int,
+        **kwargs,
+    ):
+    client = httpclient.InferenceServerClient(url=url)
+    manager = Manager()
+    results = manager.dict()
+    results["results"] = []
+    lock = Lock()
+
+    processes = []
+    for _ in range(num_results):
+        p = Process(target=send_request, args=(results, lock, client), kwargs=kwargs)
+        processes.append(p)
+        p.start()
+
+    for p in processes:
+        p.join()
+
+    return results["results"]
+
+
 def send_request(
         results,
         lock,
@@ -109,11 +132,8 @@ def send_request(
 
 
 if __name__ == "__main__":
-    client = httpclient.InferenceServerClient(url="0.0.0.0:8000")
-    
-    num_results = 4
-
     kwargs = {
+        "num_results": 4,
         "data_name": "roboflow-cable-damage",
         "mode": "Text-to-Image",
         "class_name_to_inpaint": "break",
@@ -130,19 +150,7 @@ if __name__ == "__main__":
         "seed": -1,
     }
 
-    manager = Manager()
-    results = manager.dict()
-    results["results"] = []
-    lock = Lock()
+    results = send_request_mp(**kwargs)
 
-    processes = []
-    for w in range(num_results):
-        p = Process(target=send_request, args=(results, lock, client), kwargs=kwargs)
-        processes.append(p)
-        p.start()
-
-    for p in processes:
-        p.join()
-
-    for i, im in enumerate(results["results"]):
+    for i, im in enumerate(results):
         im.save(f"{i}.png")
