@@ -120,7 +120,7 @@ if __name__ == "__main__":
         "mode": "t2i",
         "class_name_to_inpaint": "break",
         "raw_image": Image.fromarray(np.zeros([512, 512, 3]).astype(np.uint8)),
-        "mask_image": Image.fromarray(np.zeros([512, 512, 3]).astype(np.uint8)),
+        "mask_image": Image.fromarray(np.zeros([512, 512]).astype(np.uint8)),
         "boxes": [[0, 0, 100, 100]],
         "phrases": ["break"],
         "prompt": "",
