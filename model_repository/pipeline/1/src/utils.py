@@ -1,3 +1,5 @@
+MODE_LIST = ["Text-to-Image", "Image-to-Image", "Inpaint", "Outpaint", "Add"]
+
 DATA_TO_CAPTION = {
     "roboflow-pcb-tiled": lambda _: "a close up of a green circuit board",
     "roboflow-cable-damage": lambda _: "a close up photo of steel wire.",
