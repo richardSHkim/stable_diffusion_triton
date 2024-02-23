@@ -21,7 +21,7 @@ class TritonPythonModel:
         )
         self.pipe.scheduler = DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config, use_karras_sigmas=True)
         self.pipe.safety_checker = None
-        self.pipe.set_progress_bar_config(disable=True)
+        # self.pipe.set_progress_bar_config(disable=True)
         self.pipe = self.pipe.to(self.device)
 
         self.cur_lora_name = None
