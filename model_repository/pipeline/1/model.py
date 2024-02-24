@@ -6,7 +6,7 @@ import triton_python_backend_utils as pb_utils
 from diffusers import DPMSolverMultistepScheduler
 
 from .src.stable_diffusion_allinone_pipeline import StableDiffusionAllInOnePipeline
-from .src.utils import MODE_LIST, DATA_TO_CAPTION
+from .src.utils import MODE_LIST
 from .src.processes import process_t2i, process_i2i, process_inpaint, process_outpaint, process_add
 
 
@@ -28,12 +28,15 @@ class TritonPythonModel:
 
     def update_lora(self, data_name):
         self.pipe.unload_lora_weights()
-        self.pipe.load_lora_weights(
-            os.path.join(self.model_dir, "weights", data_name),
-            "pytorch_lora_weights.safetensors",
-        )
-        self.cur_lora_name = data_name
-        print(f"Loaded {data_name} LoRA weights")
+        try:
+            self.pipe.load_lora_weights(
+                os.path.join(self.model_dir, "weights", data_name),
+                "pytorch_lora_weights.safetensors",
+            )
+            self.cur_lora_name = data_name
+            print(f"Loaded {data_name} LoRA weights")
+        except:
+            print(f"Unable to load {data_name} LoRA weights.")
 
     def execute(self, requests):
         responses = []
@@ -63,13 +66,6 @@ class TritonPythonModel:
             # check mode
             if mode not in MODE_LIST:
                 assert False, f"not supproted mode: {mode}, supported: {MODE_LIST}"
-
-            # check data_name
-            if data_name not in DATA_TO_CAPTION:
-                assert False, f"not supported data name: {data_name}, supported: {list(DATA_TO_CAPTION.keys())}"
-
-            # Get base prompt
-            prompt = DATA_TO_CAPTION[data_name](None) + f" {prompt}"
 
             # Update LoRA layer
             if self.cur_lora_name is None or self.cur_lora_name != data_name:
