@@ -106,7 +106,7 @@ def send_request(
 
 
 if __name__ == "__main__":
-    client = httpclient.InferenceServerClient(url="0.0.0.0:8010")
+    client = httpclient.InferenceServerClient(url="0.0.0.0:8000")
 
     responses = send_request(
         client=client,
