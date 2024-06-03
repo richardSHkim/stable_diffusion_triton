@@ -5,62 +5,12 @@ from PIL import Image
 import tritonclient.http as httpclient
 
 
-def create_reco_prompt(
-    caption: str = '',
-    phrases=[],
-    boxes=[],
-    normalize_boxes=True,
-    w=512,
-    h=512,
-    num_bins=1000,
-    ):
-    """
-    method to create ReCo prompt
-
-    caption: global caption
-    phrases: list of regional captions
-    boxes: list of regional coordinates (unnormalized xyxy)
-    """
-
-    SOS_token = '<|startoftext|>'
-    EOS_token = '<|endoftext|>'
-    
-    box_captions_with_coords = []
-    
-    box_captions_with_coords += [caption]
-    box_captions_with_coords += [EOS_token]
-
-    for phrase, box in zip(phrases, boxes):
-        if normalize_boxes:
-            x1, y1, x2, y2 = box
-            box = [x1/w, y1/h, x2/w, y2/h]
-
-        # quantize into bins
-        quant_x0 = int(round((box[0] * (num_bins - 1))))
-        quant_y0 = int(round((box[1] * (num_bins - 1))))
-        quant_x1 = int(round((box[2] * (num_bins - 1))))
-        quant_y1 = int(round((box[3] * (num_bins - 1))))
-        
-        # ReCo format
-        # Add SOS/EOS before/after regional captions
-        box_captions_with_coords += [
-            f"<bin{str(quant_x0).zfill(3)}>",
-            f"<bin{str(quant_y0).zfill(3)}>",
-            f"<bin{str(quant_x1).zfill(3)}>",
-            f"<bin{str(quant_y1).zfill(3)}>",
-            SOS_token,
-            phrase,
-            EOS_token
-        ]
-
-    text = " ".join(box_captions_with_coords)
-    return text
-
-
 def send_request(
         client,
         mode: str,
         prompt: str,
+        boxes: List[List[float]],
+        phrases: List[str],
         negative_prompt: str = "",
         image: Image.Image = None,
         mask_image: Image.Image = None,
@@ -72,8 +22,10 @@ def send_request(
     ) -> List[Image.Image]:
 
     # Make numpy
-    prompt = np.array([prompt], dtype=object)
     mode = np.array([mode], dtype=object)
+    prompt = np.array([prompt], dtype=object)
+    boxes = np.array(boxes, dtype=np.float32)
+    phrases = np.array(phrases, dtype=object)
     negative_prompt = np.array([negative_prompt], dtype=object)
     if image is None:
         image = np.zeros([512, 512, 3], dtype=np.uint8)
@@ -92,6 +44,8 @@ def send_request(
     # Triton Inputs
     mode_in = httpclient.InferInput(name="mode", shape=mode.shape, datatype="BYTES")
     prompt_in = httpclient.InferInput(name="prompt", shape=prompt.shape, datatype="BYTES")
+    boxes_in = httpclient.InferInput(name="boxes", shape=boxes.shape, datatype="FP32")
+    phrases_in = httpclient.InferInput(name="phrases", shape=phrases.shape, datatype="BYTES")
     negative_prompt_in = httpclient.InferInput(name="negative_prompt", shape=negative_prompt.shape, datatype="BYTES")
     image_in = httpclient.InferInput(name="image", shape=image.shape, datatype="UINT8")
     mask_image_in = httpclient.InferInput(name="mask_image", shape=mask_image.shape, datatype="UINT8")
@@ -103,6 +57,8 @@ def send_request(
 
     mode_in.set_data_from_numpy(mode)
     prompt_in.set_data_from_numpy(prompt)
+    boxes_in.set_data_from_numpy(boxes)
+    phrases_in.set_data_from_numpy(phrases)
     negative_prompt_in.set_data_from_numpy(negative_prompt)
     image_in.set_data_from_numpy(image)
     mask_image_in.set_data_from_numpy(mask_image)
@@ -120,6 +76,8 @@ def send_request(
         inputs=[
             mode_in,
             prompt_in,
+            boxes_in,
+            phrases_in,
             negative_prompt_in,
             image_in,
             mask_image_in,
@@ -138,15 +96,25 @@ def send_request(
 
 
 if __name__ == "__main__":
-    client = httpclient.InferenceServerClient(url="0.0.0.0:8000")
+    client = httpclient.InferenceServerClient(url="0.0.0.0:8010")
 
     responses = send_request(
         client=client,
         mode="i2i",
+        boxes=[
+            [747, 60, 52.63, 361],
+            [0, 148, 170.97, 248.28],
+            [524, 106, 262.07, 365.19],
+            [336, 140, 255.46, 326.58],
+            [155, 210, 222.5, 232.09],
+        ], # xywh
+        phrases=[
+            'cavity', 'cavity', 'cavity', 'cavity', 'cavity'
+        ],
         image=Image.open("sample.png"),
         mask_image=Image.open("sample_mask.png"),
         strength=0.4,
-        prompt="a close up of a person's teeth. <|endoftext|> <bin000> <bin497> <bin183> <bin639> <|startoftext|> normal <|endoftext|> <bin743> <bin497> <bin909> <bin648> <|startoftext|> normal <|endoftext|> <bin711> <bin617> <bin886> <bin759> <|startoftext|> normal <|endoftext|> <bin001> <bin628> <bin212> <bin758> <|startoftext|> normal <|endoftext|> <bin683> <bin721> <bin818> <bin880> <|startoftext|> normal <|endoftext|> <bin105> <bin732> <bin241> <bin877> <|startoftext|> normal <|endoftext|> <bin591> <bin781> <bin707> <bin914> <|startoftext|> normal <|endoftext|> <bin225> <bin781> <bin343> <bin917> <|startoftext|> normal <|endoftext|> <bin318> <bin797> <bin468> <bin978> <|startoftext|> normal <|endoftext|> <bin460> <bin808> <bin618> <bin975> <|startoftext|> normal <|endoftext|> <bin771> <bin153> <bin985> <bin351> <|startoftext|> cavity <|endoftext|> <bin000> <bin169> <bin083> <bin366> <|startoftext|> cavity <|endoftext|> <bin760> <bin317> <bin961> <bin534> <|startoftext|> cavity <|endoftext|> <bin000> <bin328> <bin136> <bin540> <|startoftext|> cavity <|endoftext|>",
+        prompt="",
     )
 
     for i, im in enumerate(responses):
