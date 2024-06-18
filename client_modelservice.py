@@ -1,8 +1,8 @@
 from typing import List
-import numpy as np
-from PIL import Image
 
+import numpy as np
 import tritonclient.http as httpclient
+from PIL import Image, ImageDraw
 
 
 def send_request(
@@ -68,7 +68,9 @@ def send_request(
     num_images_per_prompt_in.set_data_from_numpy(num_images_per_prompt)
     seed_in.set_data_from_numpy(seed)
 
-    output_img = httpclient.InferRequestedOutput("generated_image")
+    output_image = httpclient.InferRequestedOutput("output_image")
+    output_boxes = httpclient.InferRequestedOutput("output_boxes")
+    output_phrases = httpclient.InferRequestedOutput("output_phrases")
 
     # Inference
     query_response = client.infer(
@@ -80,25 +82,33 @@ def send_request(
             phrases_in,
             negative_prompt_in,
             image_in,
-            mask_image_in,
+            # mask_image_in,
             num_inference_steps_in,
             guidance_scale_in,
             strength_in,
             num_images_per_prompt_in,
             seed_in,
             ], 
-        outputs=[output_img],
+        outputs=[
+            output_image,
+            output_boxes,
+            output_phrases,
+        ],
     )
-    responses = query_response.as_numpy("generated_image")
-    responses = [Image.fromarray((x*255).astype(np.uint8)) for x in responses]
 
-    return responses
+    out_images = query_response.as_numpy("output_image")
+    out_images = [Image.fromarray((x*255).astype(np.uint8)) for x in out_images]
+
+    out_boxes = query_response.as_numpy("output_boxes")
+    out_phrases = query_response.as_numpy("output_phrases")
+
+    return out_images, out_boxes, out_phrases
 
 
 if __name__ == "__main__":
-    client = httpclient.InferenceServerClient(url="0.0.0.0:8010")
+    client = httpclient.InferenceServerClient(url="0.0.0.0:8000")
 
-    responses = send_request(
+    image_lst, boxes_lst, phrases_lst = send_request(
         client=client,
         mode="i2i",
         boxes=[
@@ -113,9 +123,14 @@ if __name__ == "__main__":
         ],
         image=Image.open("sample.png"),
         mask_image=Image.open("sample_mask.png"),
-        strength=0.4,
+        strength=0.6,
         prompt="",
     )
 
-    for i, im in enumerate(responses):
-        im.save(f"{i}.png")
+    for i, (image, boxes, phrases) in enumerate(zip(image_lst, boxes_lst, phrases_lst)):
+        # image_with_box = to_pil_image(draw_bounding_boxes(pil_to_tensor(image), torch.Tensor(boxes), labels=phrases))
+        image_draw = ImageDraw.Draw(image)
+        for box, phrase in zip(boxes, phrases):
+            image_draw.rectangle(box, outline="red")
+            image_draw.text((box[0], box[1]), phrase.decode())
+        image.save(f"{i}.png")
